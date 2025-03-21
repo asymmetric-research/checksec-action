@@ -1,5 +1,9 @@
-name: Checksec
-description: Run checksec on binaries to verify security mitigations
+name: Checksec Security Verification
+description: Verify binary security mitigations using checksec
+author: 'Asymmetric Research'
+branding:
+  icon: 'shield'  # Choose from GitHub's icon set
+  color: 'green'  # Options: white, yellow, blue, green, orange, red, purple
 inputs:
   directory:
     description: 'Directory to scan with checksec'
