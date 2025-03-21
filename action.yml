@@ -1,0 +1,43 @@
+name: Checksec
+description: Run checksec on binaries to verify security mitigations
+inputs:
+  directory:
+    description: 'Directory to scan with checksec'
+    required: false
+  file:
+    description: 'File to scan with checksec'
+    required: false
+runs:
+  using: 'composite'
+  steps:
+    - name: Check Inputs
+      shell: bash
+      run: |
+        if [ -z "${{ inputs.directory }}" ] && [ -z "${{ inputs.file }}" ]; then
+          echo "Error: Either 'directory' or 'file' input must be provided"
+          exit 1
+        fi
+
+    - name: Set up cache
+      id: cache-checksec
+      uses: actions/cache@v3
+      with:
+        path: ./checksec
+        key: checksec-3.0.2
+
+    - name: Download and Extract checksec
+      if: steps.cache-checksec.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        wget -c https://github.com/slimm609/checksec/releases/download/3.0.2/checksec_3.0.2_linux_amd64.tar.gz
+        tar xfvz checksec_3.0.2_linux_amd64.tar.gz
+        chmod +x checksec
+
+    - name: Run checksec
+      shell: bash
+      run: |
+        if [ -n "${{ inputs.directory }}" ]; then
+          ./checksec --output json dir "${{ inputs.directory }}" | python3 ${{ github.action_path }}/checksec_process.py
+        else
+          ./checksec --output json "${{ inputs.file }}" | python3 ${{ github.action_path }}/checksec_process.py
+        fi
