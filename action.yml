@@ -1,0 +1,54 @@
+name: Checksec Security Verification
+description: Verify binary security mitigations using checksec
+author: 'Asymmetric Research'
+branding:
+  icon: 'shield'
+  color: 'green'
+inputs:
+  directory:
+    description: 'Directory to scan with checksec'
+    required: false
+  file:
+    description: 'File to scan with checksec'
+    required: false
+  skip-fortify:
+    description: 'skip the fortify check'
+    type: bool
+    required: false
+runs:
+  using: 'composite'
+  steps:
+    - name: Check Inputs
+      shell: bash
+      run: |
+        if [ -z "${{ inputs.directory }}" ] && [ -z "${{ inputs.file }}" ]; then
+          echo "Error: Either 'directory' or 'file' input must be provided"
+          exit 1
+        fi
+
+    - name: Set up cache
+      id: cache-checksec
+      uses: actions/cache@v3
+      with:
+        path: ./checksec
+        key: checksec-3.0.2
+
+    - name: Download and Extract checksec
+      if: steps.cache-checksec.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        wget -c https://github.com/slimm609/checksec/releases/download/3.0.2/checksec_3.0.2_linux_amd64.tar.gz
+        tar xfvz checksec_3.0.2_linux_amd64.tar.gz
+        chmod +x checksec
+
+    - name: Run checksec
+      shell: bash
+      run: |
+        SKIP_FLAG="${{ inputs.skip-fortify == 'true' && '--skip-fortify' || '' }}"
+        if [ -n "${{ inputs.directory }}" ]; then
+          ./checksec --output json dir "${{ inputs.directory }}" # print
+          ./checksec --output json dir "${{ inputs.directory }}" | grep -v "Warning" | python3 ${{ github.action_path }}/checksec_process.py $SKIP_FLAG
+        else
+          ./checksec --output json file "${{ inputs.file }}"     # print
+          ./checksec --output json file "${{ inputs.file }}"     | grep -v "Warning" | python3 ${{ github.action_path }}/checksec_process.py $SKIP_FLAG
+        fi

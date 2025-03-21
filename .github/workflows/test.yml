@@ -1,0 +1,65 @@
+name: Test Checksec Action
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-action:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      # Test with secure binary
+      - name: Install appropriate libc
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libc6 libc6-dev
+          sudo cp /lib/x86_64-linux-gnu/libc.so.6 /lib/libc.so.6
+          sudo ldconfig
+
+      - name: Create test binary with mitigations
+        run: |
+          gcc -o secure_binary test.c -fstack-protector-all -D_FORTIFY_SOURCE=2 -O2 -Wl,-z,relro,-z,now -fPIC -pie
+          ldd ./secure_binary
+      # Test action with file input (should pass)
+      - name: Test action with file
+        uses: ./
+        env:
+          LD_PRELOAD: "/lib/x86_64-linux-gnu/libc.so.6"
+        with:
+          file: secure_binary
+          skip-fortify: true
+      # make test dir
+      - name: create test dir
+        run: mkdir test/ && cp ./secure_binary ./test/
+      # Test with directory input
+      - name: Test action with directory
+        uses: ./
+        with:
+          directory: ./test/
+          skip-fortify: true
+
+      # create insecure bin
+      - name: Create insecure binary
+        run: |
+          gcc -o insecure_binary test.c -fno-stack-protector
+
+      # This step should fail due to missing security mitigations
+      - name: Test with insecure binary (expected failure)
+        uses: ./
+        with:
+          file: insecure_binary
+          skip-fortify: true
+        continue-on-error: true
+        id: insecure-test
+
+      # Verify that the step failed as expected
+      - name: Verify expected failure
+        run: |
+          if [ "${{ steps.insecure-test.outcome }}" != "failure" ]; then
+            echo "Error: Insecure binary check should have failed"
+            exit 1
+          fi
