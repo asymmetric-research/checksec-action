@@ -1,6 +1,6 @@
 # Checksec Security Verification
 
-[![](https://img.shields.io/badge/Marketplace-Checksec%20Security%20Verification-green.svg)](https://github.com/marketplace/actions/checksec-action)
+[![](https://img.shields.io/badge/Marketplace-Checksec%20Security%20Verification-green.svg)](https://github.com/marketplace/actions/checksec-security-verification)
 
 A GitHub Action to verify binary security mitigations using checksec.
 
